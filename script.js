@@ -1,3 +1,32 @@
+// A basic graviational system with the Earth and a two controllable satell
+
+// The first two coordinates are one end, the second two are the other end.
+
+// Constants
+var G = 1; // Gravitational constant
+var mSat = 1; // Satellite mass
+var mEarth = 1; // Earth mass
+var mTarget = 1; // Target mass
+
+// Positions
+var satPos = [0,0]; // Dummy
+var targetVel = [0,0]; // Dummy
+var earthPos = [0,0];
+
+// Velocities
+var satVel = [0,0]; // Dummy
+var targetVel = [0,0]; // Dummy
+var earthVel = [0,0];
+
+// Accelerations
+var satAcc = [0,0];
+var targetAcc = [0,0];
+var currentBurn = [0, 0];
+var netForceSat = [0, 0];
+
+// zoomLevel > 1 ==> zoomed in, zoomLevel < 1 ==> zoomed out
+var zoomLevel = 1;
+
 class GravitationalSystem {
   // All simulated environments involving gravity should use this class
   constructor(multipoles, separations, multipoleActivations, initialCoordinates, initialVelocities, updateBooleans) {
@@ -29,7 +58,7 @@ class GravitationalSystem {
     this.coordinates = [initialCoordinates]; // First index is the step number
     this.velocities = [initialVelocities]; // First index is the step number
     this.updateBooleans = updateBooleans;
-    this.G = //Something;
+    this.G  = 1; //Something;
 
     /*
       TODO: Check consistency
@@ -44,11 +73,13 @@ class GravitationalSystem {
     */
     var resultant = [0,0,0];
     if (vector1.length === vector2.length) {
-      for (i = 0; i < 3; i++) {
+      for (var i = 0; i < 3; i++) {
         resultant[i] = vector1[i] + vector2[i];
       }
     } else {
       console.log("Attempted to add two unlike vectors. FAIL.");
+      console.log(vector1)
+      console.log(vector2)
       return [0,0,0];
     }
     return resultant;
@@ -61,7 +92,7 @@ class GravitationalSystem {
     Returns: the resultant vector
     */
     var resultant = [0,0,0];
-    for (i = 0; i<vector.length; i++) {
+    for (var i = 0; i<vector.length; i++) {
       resultant[i] = vector[i]*scalar;
     }
     return resultant;
@@ -75,7 +106,7 @@ class GravitationalSystem {
     */
     var product = 0;
     if (vector1.length === vector2.length) {
-      for (i = 0; i < 3; i++) {
+      for (var i = 0; i < 3; i++) {
         product += vector1[i]*vector2[i];
       }
     } else {
@@ -99,28 +130,30 @@ class GravitationalSystem {
     */
     var currentNetForce = externalNetForce;
     var ourMass = 0; // The mass of the test object, build it up with the multipoles
-    for (i=0; i < this.multipoles[objNum].length; i++) {
+    for (var i=0; i < this.multipoles[objNum].length; i++) {
       ourMass += this.multipoles[objNum][i];
     }
 
-    for (i=0; i < this.coordinates[timestep].length; i++) {
+    for (var i=0; i < this.coordinates[timestep].length; i++) {
       // i is the number of the object applying force to the test object, so ignore objNum = i
       if (objNum !== i) {
         // Calculate the gravitational force object i exerts on the test object
-        for (j=0; j< this.multipoles[i].length; j++) {
+        for (var j=0; j< this.multipoles[i].length; j++) {
           // Vector pointing from the center of our object to the center of the ith object
-          separationToCenter = this.add(this.times(-1, ourCoordinate), this.coordinates[timestep][i]);
+          var separationToCenter = this.add(this.times(-1, this.coordinates[timestep][i]), ourCoordinate);
           // Vector pointing from the center of our object to the jth multiple of the ith object
-          separationToMultipole = this.add(separationToCenter, this.separations[i][j]);
+          var separationToMultipole = this.add(separationToCenter, this.separations[i][j]);
+
           // r^2 in Newton's Law of Gravitation
-          rsq = this.dot(separationToMultipole,separationToMultipole);
+          var rsq = this.dot(separationToMultipole,separationToMultipole);
           // Denominator of Newton's Law of Gravitation absorbing the normalization
-          denom = rsq ** (3/2);
-          currentNetForce += this.times((this.G*this.multipoles[i][j]*ourMass)/denom, separationToMultipole);
+          var denom = rsq ** (3/2);
+          currentNetForce = this.add(currentNetForce, this.times((this.G*this.multipoles[i][j]*ourMass)/denom, separationToMultipole));
         }
       }
     }
-
+console.log("Ret")
+          console.log(currentNetForce)
     return currentNetForce;
   }
 
@@ -131,19 +164,23 @@ class GravitationalSystem {
     Parameters:
       timestep: the step at which we are starting
     */
+    var h = 1
     var newCoords = []; // Vector to hold the coordinates for the next timestep
     var newVels = []; // Vector to hold the velocities for the next timestep
-    for (i=0; i<this.coordinates[timestep].length; i++) {
+    for (var i=0; i<this.coordinates[timestep].length; i++) {
       // Weights for the fourth-order RK method
-      var k0 = this.times(h,netForce(externalNetForce, i, this.coordinates[timestep][i], timestep));
-      var k1 = this.times(h,netForce(externalNetForce, i, this.add(this.coordinates[timestep][i],this.times(1/2,k0), timestep + (1/2)*h));
-      var k2 = this.times(h,netForce(externalNetForce, i, this.add(this.coordinates[timestep][i],this.times(1/2,k1), timestep + (1/2)*h));
-      var k3 = this.times(h,netForce(externalNetForce, i, this.add(this.coordinates[timestep][i],k2), timestep + h));
+        console.log("Stepped.")
+      var k0 = this.times(h,this.netForce(externalNetForce, i, this.coordinates[timestep][i], timestep));
+      var k1 = this.times(h,this.netForce(externalNetForce, i, this.add(this.coordinates[timestep][i],this.times(1/2,k0)), timestep));
+      var k2 = this.times(h,this.netForce(externalNetForce, i, this.add(this.coordinates[timestep][i],this.times(1/2,k1)), timestep));
+      var k3 = this.times(h,this.netForce(externalNetForce, i, this.add(this.coordinates[timestep][i],k2), timestep));
 
       var l0 = this.times(h,this.velocities[timestep][i]);
+      console.log("Finished first computation")
+      console.log(this.velocities[timestep])
       var l1 = this.times(h,this.add(this.velocities[timestep][i],this.times(1/2,l0)));
-      var l1 = this.times(h,this.add(this.velocities[timestep][i],this.times(1/2,l1)));
-      var l1 = this.times(h,this.add(this.velocities[timestep][i],this.times(1/2,l0)));
+      var l2 = this.times(h,this.add(this.velocities[timestep][i],this.times(1/2,l1)));
+      var l3 = this.times(h,this.add(this.velocities[timestep][i],this.times(1/2,l0)));
 
       // After this mess, do the Runge-Kutta:
       var input1 = this.add(this.add(this.add(k0, this.times(2,k1)), this.times(2,k2)),k3);
@@ -159,34 +196,7 @@ class GravitationalSystem {
   }
 }
 
-// A basic graviational system with the Earth and a two controllable satell
 
-// The first two coordinates are one end, the second two are the other end.
-
-// Constants
-var G = 1 // Gravitational constant
-var mSat = 1 // Satellite mass
-var mEarth = 1 // Earth mass
-var mTarget = 1 // Target mass
-
-// Positions
-var satPos = [0,0] // Dummy
-var targetVel = [0,0] // Dummy
-var earthPos = [0,0]
-
-// Velocities
-var satVel = [0,0] // Dummy
-var targetVel = [0,0] // Dummy
-var earthVel = [0,0]
-
-// Accelerations
-var satAcc = [0,0]
-var targetAcc = [0,0]
-var currentBurn = [0, 0]
-var netForceSat = [0, 0]
-
-// zoomLevel > 1 ==> zoomed in, zoomLevel < 1 ==> zoomed out
-var zoomLevel = 1;
 
 
 // Count frames, track time so we can compute fps rate
@@ -254,11 +264,8 @@ function myKeyDown (event) {
   }
 }
 
-function updateNetForce(){
-  // Get all of the forces on it and add them up:
-  earthSatSeparation_x = earth
-}
-
+var counterOfThings = 0;
+system = new GravitationalSystem([[1],[1]], [[[0,0,0]], [[0,0,0]]], [0], [[0,0,0], [3,0,0]], [[0,0,0], [3,1,0]], [true, true])
 function drawAll()
 /*
   Purpose: This is the main drawing loop.
@@ -266,10 +273,18 @@ function drawAll()
   Returns: None, but it calls itself to cycle to the next frame
 */
 {
-  calculateFPS();
+  if (counterOfThings < 5) {
+    system.nextStep(counterOfThings, [0,0,0]);
+    counterOfThings++;
+    console.log("Time")
+    console.log(system.coordinates[counterOfThings])
+    console.log(system.velocities[counterOfThings])
+  }
 
-  applyVelocity(linePos, lineVel);
-  applyVelocity(circlePos, circleVel);
+  //calculateFPS(); Uncomment LATER
+
+  //applyVelocity(linePos, lineVel);
+  //applyVelocity(circlePos, circleVel);
 
   // If the line hits the end of the canvas, bounce
   // Add/subtract a little speed
@@ -297,20 +312,6 @@ function drawAll()
   }
 */
 
-
-  // Draw the line
-  context.clearRect(0, 0, canvas.width, canvas.height);
-  context.lineWidth = 3;
-  context.lineCap = 'round';
-  context.beginPath();
-  context.moveTo(linePos[0], linePos[1]);
-  context.lineTo(linePos[2], linePos[3]);
-  context.stroke();
-  context.beginPath();
-  context.arc(circlePos[0], circlePos[1], circlePos[2], 0, 2*Math.PI);
-  context.stroke();
-
-  // Loop the animation to the next frame.
   window.requestAnimationFrame(drawAll);
 }
 
