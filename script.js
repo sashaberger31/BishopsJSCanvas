@@ -78,8 +78,6 @@ class GravitationalSystem {
       }
     } else {
       console.log("Attempted to add two unlike vectors. FAIL.");
-      console.log(vector1)
-      console.log(vector2)
       return [0,0,0];
     }
     return resultant;
@@ -116,7 +114,7 @@ class GravitationalSystem {
     return product;
   }
 
-  netForce (externalNetForce, objNum, ourCoordinate, timestep) {
+  netAcc (externalNetForce, objNum, ourCoordinate, timestep) {
     /*
     Purpose: calculate the current net force on the object with
       number objNum (henceforth called the "test object")
@@ -128,11 +126,11 @@ class GravitationalSystem {
         call the array with
     Returns: Returns the net force vector on the test object
     */
-    var currentNetForce = externalNetForce;
     var ourMass = 0; // The mass of the test object, build it up with the multipoles
     for (var i=0; i < this.multipoles[objNum].length; i++) {
       ourMass += this.multipoles[objNum][i];
     }
+    var currentNetAcc = this.times(1/ourMass, externalNetForce);
 
     for (var i=0; i < this.coordinates[timestep].length; i++) {
       // i is the number of the object applying force to the test object, so ignore objNum = i
@@ -140,21 +138,34 @@ class GravitationalSystem {
         // Calculate the gravitational force object i exerts on the test object
         for (var j=0; j< this.multipoles[i].length; j++) {
           // Vector pointing from the center of our object to the center of the ith object
-          var separationToCenter = this.add(this.times(-1, this.coordinates[timestep][i]), ourCoordinate);
+          var separationToCenter = this.add(this.times(-1, ourCoordinate), this.coordinates[timestep][i]);
           // Vector pointing from the center of our object to the jth multiple of the ith object
-          var separationToMultipole = this.add(separationToCenter, this.separations[i][j]);
+          var separationToMultipole = this.add(separationToCenter, this.times(-1, this.separations[i][j]));
+          console.log("Separation of")
+          console.log(objNum, i, separationToMultipole)
 
           // r^2 in Newton's Law of Gravitation
           var rsq = this.dot(separationToMultipole,separationToMultipole);
           // Denominator of Newton's Law of Gravitation absorbing the normalization
           var denom = rsq ** (3/2);
-          currentNetForce = this.add(currentNetForce, this.times((this.G*this.multipoles[i][j]*ourMass)/denom, separationToMultipole));
+          console.log("Adding acc")
+          console.log(objNum, this.times((this.G*this.multipoles[i][j])/denom, separationToMultipole))
+          console.log("Denominator")
+          console.log(denom)
+          if (denom < 0.5) { // In order to prevent close-encounter unrealistic results, propel them in opposite directions
+            separationToMultipole = this.times(-1, separationToMultipole)
+            denom = 1
+            // Warn of collision?
+            alert("Collision!")
+          }
+          currentNetAcc = this.add(currentNetAcc, this.times((this.G*this.multipoles[i][j])/denom, separationToMultipole));
         }
       }
     }
-console.log("Ret")
-          console.log(currentNetForce)
-    return currentNetForce;
+    console.log("Net force on object:")
+    console.log(objNum, timestep)
+    console.log(currentNetAcc)
+    return currentNetAcc;
   }
 
   nextStep (timestep, externalNetForce) {
@@ -169,15 +180,12 @@ console.log("Ret")
     var newVels = []; // Vector to hold the velocities for the next timestep
     for (var i=0; i<this.coordinates[timestep].length; i++) {
       // Weights for the fourth-order RK method
-        console.log("Stepped.")
-      var k0 = this.times(h,this.netForce(externalNetForce, i, this.coordinates[timestep][i], timestep));
-      var k1 = this.times(h,this.netForce(externalNetForce, i, this.add(this.coordinates[timestep][i],this.times(1/2,k0)), timestep));
-      var k2 = this.times(h,this.netForce(externalNetForce, i, this.add(this.coordinates[timestep][i],this.times(1/2,k1)), timestep));
-      var k3 = this.times(h,this.netForce(externalNetForce, i, this.add(this.coordinates[timestep][i],k2), timestep));
+      var k0 = this.times(h,this.netAcc(externalNetForce[i], i, this.coordinates[timestep][i], timestep));
+      var k1 = this.times(h,this.netAcc(externalNetForce[i], i, this.add(this.coordinates[timestep][i],this.times(1/2,k0)), timestep));
+      var k2 = this.times(h,this.netAcc(externalNetForce[i], i, this.add(this.coordinates[timestep][i],this.times(1/2,k1)), timestep));
+      var k3 = this.times(h,this.netAcc(externalNetForce[i], i, this.add(this.coordinates[timestep][i],k2), timestep));
 
       var l0 = this.times(h,this.velocities[timestep][i]);
-      console.log("Finished first computation")
-      console.log(this.velocities[timestep])
       var l1 = this.times(h,this.add(this.velocities[timestep][i],this.times(1/2,l0)));
       var l2 = this.times(h,this.add(this.velocities[timestep][i],this.times(1/2,l1)));
       var l3 = this.times(h,this.add(this.velocities[timestep][i],this.times(1/2,l0)));
@@ -189,6 +197,8 @@ console.log("Ret")
       var nextCoord = this.add(this.coordinates[timestep][i], this.times(1/6,input2));
       newCoords.push(nextCoord);
       newVels.push(nextVel);
+      console.log("Updating coordinates to this on object that:")
+      console.log(nextCoord, i)
     }
     // Update the coordinate and velocity arrays
     this.coordinates.push(newCoords);
@@ -265,7 +275,7 @@ function myKeyDown (event) {
 }
 
 var counterOfThings = 0;
-system = new GravitationalSystem([[1],[1]], [[[0,0,0]], [[0,0,0]]], [0], [[0,0,0], [3,0,0]], [[0,0,0], [3,1,0]], [true, true])
+system = new GravitationalSystem([[1000],[1]], [[[0,0,0]], [[0,0,0]]], [0], [[0,0,0], [100,0,0]], [[0,0,0], [0,3,0]], [true, true])
 function drawAll()
 /*
   Purpose: This is the main drawing loop.
@@ -273,13 +283,13 @@ function drawAll()
   Returns: None, but it calls itself to cycle to the next frame
 */
 {
-  if (counterOfThings < 5) {
-    system.nextStep(counterOfThings, [0,0,0]);
-    counterOfThings++;
-    console.log("Time")
-    console.log(system.coordinates[counterOfThings])
-    console.log(system.velocities[counterOfThings])
-  }
+
+      system.nextStep(counterOfThings, [[0,0,0],[0,0,0]]);
+      counterOfThings++;
+      console.log("Next Timestep")
+      console.log("----------------------------")
+
+
 
   //calculateFPS(); Uncomment LATER
 
@@ -311,8 +321,27 @@ function drawAll()
     // console.log(lineVel);
   }
 */
+  context.clearRect(0, 0, canvas.width, canvas.height);
+  pos1x = 0.5*system.coordinates[counterOfThings][0][0] + 200
+  pos1y = 0.5*system.coordinates[counterOfThings][0][1] + 200
+  pos2x = 0.5*system.coordinates[counterOfThings][1][0] + 200
+  pos2y = 0.5*system.coordinates[counterOfThings][1][1] + 200
+  context.beginPath()
+  console.log("Printing the screen")
+  console.log(pos1x,pos1y,pos2x,pos2y)
+  context.strokeStyle = "#000000"
+  context.arc(pos1x,pos1y,10,0, 2*Math.PI);
+  context.stroke();
+  context.beginPath()
+  context.strokeStyle = "#FF0000"
+  context.arc(pos2x,pos2y,10,0, 2*Math.PI);
+  context.stroke();
 
-  window.requestAnimationFrame(drawAll);
+
+
+  setTimeout( function () {
+    window.requestAnimationFrame(drawAll);
+  }, 33);
 }
 
 
@@ -332,6 +361,7 @@ canvas.style.border = "1px solid black";
 
 // Set up the context for the animation
 context = canvas.getContext("2d");
+
 
 // Set up event listener for when user presses a key down.
 // It then calls the function myKeyDown, passing it an event object.
