@@ -48,7 +48,8 @@ class GravitationalSystem {
         resultant[i] = vector1[i] + vector2[i];
       }
     } else {
-      /* TODO errors */
+      console.log("Attempted to add two unlike vectors. FAIL.");
+      return [0,0,0];
     }
     return resultant;
   }
@@ -61,7 +62,7 @@ class GravitationalSystem {
     */
     var resultant = [0,0,0];
     for (i = 0; i<vector.length; i++) {
-      resultant[i] = vector[i]*scalar
+      resultant[i] = vector[i]*scalar;
     }
     return resultant;
   }
@@ -75,31 +76,37 @@ class GravitationalSystem {
     var product = 0;
     if (vector1.length === vector2.length) {
       for (i = 0; i < 3; i++) {
-        product += vector1[i]*vector2[i]
+        product += vector1[i]*vector2[i];
       }
+    } else {
+      console.log("Attempted to add dot unlike vectors. FAIL.");
+      return [0,0,0];
     }
+    return product;
   }
 
   netForce (externalNetForce, objNum, ourCoordinate, timestep) {
     /*
-    Purpose: calculate the current net force on the object with number objNum
+    Purpose: calculate the current net force on the object with
+      number objNum (henceforth called the "test object")
     Parameters:
       externalNetForce: A vector containing any non-gravitational forces such
         as thruster burns that act on this object
       objNum: The number of the object that we want to calculate the net force of
       timestep: The currect number of timesteps we are in, i.e. the index we should
         call the array with
+    Returns: Returns the net force vector on the test object
     */
     var currentNetForce = externalNetForce;
-    var ourMass = 0;
+    var ourMass = 0; // The mass of the test object, build it up with the multipoles
     for (i=0; i < this.multipoles[objNum].length; i++) {
-      ourMass += this.multipoles[objNum][i]
+      ourMass += this.multipoles[objNum][i];
     }
 
     for (i=0; i < this.coordinates[timestep].length; i++) {
-      // i is the number of the object we applying force, so ignore objNum = i
+      // i is the number of the object applying force to the test object, so ignore objNum = i
       if (objNum !== i) {
-        // Calculate the gravitational force object i exerts on object objNum
+        // Calculate the gravitational force object i exerts on the test object
         for (j=0; j< this.multipoles[i].length; j++) {
           // Vector pointing from the center of our object to the center of the ith object
           separationToCenter = this.add(this.times(-1, ourCoordinate), this.coordinates[timestep][i]);
@@ -124,9 +131,10 @@ class GravitationalSystem {
     Parameters:
       timestep: the step at which we are starting
     */
-    var newCoords = []
-    var newVels = []
+    var newCoords = []; // Vector to hold the coordinates for the next timestep
+    var newVels = []; // Vector to hold the velocities for the next timestep
     for (i=0; i<this.coordinates[timestep].length; i++) {
+      // Weights for the fourth-order RK method
       var k0 = this.times(h,netForce(externalNetForce, i, this.coordinates[timestep][i], timestep));
       var k1 = this.times(h,netForce(externalNetForce, i, this.add(this.coordinates[timestep][i],this.times(1/2,k0), timestep + (1/2)*h));
       var k2 = this.times(h,netForce(externalNetForce, i, this.add(this.coordinates[timestep][i],this.times(1/2,k1), timestep + (1/2)*h));
@@ -142,11 +150,12 @@ class GravitationalSystem {
       var input2 = this.add(this.add(this.add(l0, this.times(2,l1)), this.times(2,l2)),l3);
       var nextVel = this.add(this.velocities[timestep][i], this.times(1/6,input1));
       var nextCoord = this.add(this.coordinates[timestep][i], this.times(1/6,input2));
-      newCoords.push(nextCoord)
-      newVels.push(nextVel)
+      newCoords.push(nextCoord);
+      newVels.push(nextVel);
     }
-    this.coordinates.push(newCoords)
-    this.velocities.push(newVels)
+    // Update the coordinate and velocity arrays
+    this.coordinates.push(newCoords);
+    this.velocities.push(newVels);
   }
 }
 
