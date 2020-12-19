@@ -25,7 +25,7 @@ var currentBurn = [0, 0];
 var netForceSat = [0, 0];
 
 // zoomLevel > 1 ==> zoomed in, zoomLevel < 1 ==> zoomed out
-var zoomLevel = 1;
+var zoomLevel = 0.5;
 
 class GravitationalSystem {
   // All simulated environments involving gravity should use this class
@@ -256,22 +256,6 @@ function myKeyDown (event) {
     zoomLevel += 0.1
   }
 
-  if (keyStr == 'w') {
-    // Move circle up
-    circleVel[1] -= 1;
-  }
-  if (keyStr == 'a') {
-    // Move circle left
-    circleVel[0] -= 1;
-  }
-  if (keyStr == 's') {
-    // Move circle down
-    circleVel[1] += 1;
-  }
-  if (keyStr == 'd') {
-    // Move circle right
-    circleVel[0] += 1;
-  }
 }
 
 var counterOfThings = 0;
@@ -322,10 +306,10 @@ function drawAll()
   }
 */
   context.clearRect(0, 0, canvas.width, canvas.height);
-  pos1x = 0.5*system.coordinates[counterOfThings][0][0] + 200
-  pos1y = 0.5*system.coordinates[counterOfThings][0][1] + 200
-  pos2x = 0.5*system.coordinates[counterOfThings][1][0] + 200
-  pos2y = 0.5*system.coordinates[counterOfThings][1][1] + 200
+  pos1x = zoomLevel*system.coordinates[counterOfThings][0][0] + 200
+  pos1y = zoomLevel*system.coordinates[counterOfThings][0][1] + 200
+  pos2x = zoomLevel*system.coordinates[counterOfThings][1][0] + 200
+  pos2y = zoomLevel*system.coordinates[counterOfThings][1][1] + 200
   context.beginPath()
   console.log("Printing the screen")
   console.log(pos1x,pos1y,pos2x,pos2y)
